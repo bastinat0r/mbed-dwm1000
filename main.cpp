@@ -1,6 +1,7 @@
 #include "mbed.h"
 
 DigitalOut led1(LED1);
+DigitalOut led2(LED2);
 SPI spi(SPI_MISO, SPI_MOSI, SPI_SCK);
 DigitalOut cs(SPI_CS);
 
@@ -25,10 +26,13 @@ int main() {
 	cs = 1;
 	printf("%lx\n", (unsigned long int) answer);
 
+	if(answer != 0) {
+		led2 != led2;
+	}
+
 
     while (true) {
         led1 = !led1;
         wait(0.5);
     }
 }
-
