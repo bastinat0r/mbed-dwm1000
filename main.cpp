@@ -1,5 +1,5 @@
 #include "mbed.h"
-#include "dw1000_spi.h"
+#include "dw1000.h"
  
 PwmOut led1(LED1);
 DigitalOut led2(LED2);

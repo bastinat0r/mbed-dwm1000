@@ -1,4 +1,4 @@
-#include "dw1000_spi.h"
+#include "dw1000.h"
 #include "mbed.h"
 
 DW1000::DW1000(SPI& spi, DigitalIn& irq, DigitalOut& sReset) : 
