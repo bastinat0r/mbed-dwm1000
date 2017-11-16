@@ -13,16 +13,20 @@ private:
 	SPI& spi;
 	DigitalIn& irq;
 	DigitalOut& sReset;
-	void request_dev_id();
 	void request_dev_id_callback(int narg);
+	void request_eui_callback(int narg);
 
 	uint32_t dev_id;
+	uint64_t eui;
 	uint8_t tx_buffer[TX_BUFFER_LENGTH];
     uint8_t rx_buffer[RX_BUFFER_LENGTH];
 
 public:
-	DW1000(SPI& spi, DigitalIn& irq, DigitalOut& sReset);
+	void request_dev_id();
 	uint32_t get_dev_id();
+	void request_eui();
+	uint64_t get_eui();
+	DW1000(SPI& spi, DigitalIn& irq, DigitalOut& sReset);
 
 };
 
