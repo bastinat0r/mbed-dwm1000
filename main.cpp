@@ -10,22 +10,13 @@ DW1000 dw1000(spi, sIRQ, sReset);
 
 // main() runs in its own thread in the OS
 int main() {
-	uint64_t dev_id;
-	dev_id = dw1000.get_dev_id();
-	if(dev_id != 0) {
-		led = 1;
-	}
-	
-	dw1000.request_dev_id();
-	
-
+	heartbeat = 1;
+	led = dw1000.dev_id_ok();
+	wait(4.0f);
+	led = 0;
 
     while (true) {
 		heartbeat = !heartbeat;
 		wait(.5f);
-		dev_id = dw1000.get_dev_id();
-		if(dev_id != 0) {
-			led = 1;
-		}
     }
 }
