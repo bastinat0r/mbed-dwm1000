@@ -44,6 +44,10 @@ void DW1000::cmd_set_byte2(uint8_t value){
 	cmd_length = 3;
 } 
 
+void DW1000::cmd_set_write_bit() {
+	tx_buffer[0] |= (1 << 7);
+}
+
 bool DW1000::cmd_is_write() {
 	return tx_buffer[0] & (1 << 7);
 }
@@ -59,6 +63,10 @@ void DW1000::cmd_execute(size_t bytes, const event_callback_t& cb) {
 	spi.transfer(tx_buffer, tx_length * 8,
 		rx_buffer, rx_length*8,
 		cb, SPI_EVENT_COMPLETE);
+}
+
+void DW1000::cmd_execute(size_t bytes) {
+	cmd_execute(bytes, event_callback_t(this, &DW1000::no_callback));
 }
 
 uint32_t DW1000::get_dev_id() {
@@ -87,14 +95,7 @@ void DW1000::set_eui(uint64_t new_eui) {
 	cmd_set_byte0(0x01);
 	eui = new_eui;
 	*((uint64_t*) (tx_buffer + cmd_length)) = eui;
-	write_no_callback(8+cmd_length);
-}
-
-void DW1000::write_no_callback(size_t bytes) {
-	spi.transfer(tx_buffer, bytes*8,
-				 rx_buffer, 0,
-				 event_callback_t(this, &DW1000::no_callback),
-				 SPI_EVENT_COMPLETE);
+	cmd_execute(8);
 }
 
 void DW1000::request_eui() {
@@ -118,4 +119,17 @@ bool DW1000::dev_id_ok() {
 		wait(0.1f);
 	}
 	return dev_id == 0xdeca0130;
+}
+
+void DW1000::led_control(bool enable, uint8_t blinknow) {
+	cmd_reset();
+	cmd_set_write_bit();
+	cmd_set_byte0(0x36);
+	cmd_set_byte1(0x28);
+	tx_buffer[cmd_length + 0] = 0x00;
+	tx_buffer[cmd_length + 1] = blinknow & 0x0F;
+	tx_buffer[cmd_length + 2] = enable ? 0x01 : 0x00;
+	tx_buffer[cmd_length + 3] = 0x20; // the default blink length
+
+	cmd_execute(4);
 }

@@ -15,8 +15,10 @@ int main() {
 	wait(4.0f);
 	led = 0;
 
+	dw1000.led_control(true, 0x0F);
     while (true) {
 		heartbeat = !heartbeat;
+		dw1000.led_control(true, 0x0F);
 		wait(.5f);
     }
 }
