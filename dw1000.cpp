@@ -1,6 +1,7 @@
 #include "dw1000.h"
 #include "mbed.h"
 
+
 DW1000::DW1000(SPI& spi, DigitalIn& irq, DigitalOut& sReset) : 
 	spi(spi),
 	irq(irq),
@@ -16,7 +17,7 @@ DW1000::DW1000(SPI& spi, DigitalIn& irq, DigitalOut& sReset) :
 }
 
 void DW1000::cmd_reset() {
-	for(uint8_t i = 0; i<cmd_length; ++i) {
+	for(uint8_t i = 0; i<4; ++i) {
 		tx_buffer[i] = 0;
 	}
 	cmd_length = 0;
@@ -24,7 +25,7 @@ void DW1000::cmd_reset() {
 
 void DW1000::cmd_set_byte0(uint8_t value){
 	tx_buffer[0] &= 0b11000000; // set all bits except RW/subregister to 0
-	tx_buffer[0] |= ( ~0b11000000 & value ); // set all bits accept RW/subregister
+	tx_buffer[0] |= ( ~0b11000000 & value ); // set all bits except RW/subregister
 	if(cmd_length < 1)
 		cmd_length = 1;
 } 
@@ -55,10 +56,10 @@ bool DW1000::cmd_is_write() {
 void DW1000::cmd_execute(size_t bytes, const event_callback_t& cb) {
 	size_t tx_length = cmd_length;
 	size_t rx_length = 0;
-	if(cmd_is_write()) {
+	if(cmd_is_write()) { 
 		tx_length += bytes;
 	} else {
-		rx_length += bytes;
+		rx_length += bytes + cmd_length; // the client transmits while we send cmd
 	}
 	spi.transfer(tx_buffer, tx_length * 8,
 		rx_buffer, rx_length*8,
@@ -81,7 +82,7 @@ void DW1000::request_dev_id() {
 
 void DW1000::request_dev_id_callback(int narg) {
 	(void)narg;
-	dev_id = *((uint32_t*) (rx_buffer+1));
+	dev_id = rx_get_payload4(1);
 }
 
 // extended unique identifier
@@ -94,23 +95,20 @@ void DW1000::set_eui(uint64_t new_eui) {
 	cmd_set_write_bit();
 	cmd_set_byte0(0x01);
 	eui = new_eui;
-	*((uint64_t*) (tx_buffer + cmd_length)) = eui;
+	tx_set_payload8(eui);
 	cmd_execute(8);
 }
 
 void DW1000::request_eui() {
 	cmd_reset();
-	cmd_set_byte0(0x00);
+	cmd_set_byte0(0x01);
 
-	spi.transfer(tx_buffer, 1*8,
-		rx_buffer, 8*8,
-		event_callback_t(this, &DW1000::request_dev_id_callback),
-		SPI_EVENT_COMPLETE);
+	cmd_execute(8, event_callback_t(this, &DW1000::request_eui_callback));
 }
 
 void DW1000::request_eui_callback(int narg) {
 	(void)narg;
-	dev_id = *((uint32_t*) (rx_buffer+1));
+	eui = rx_get_payload8(1);
 }
 
 bool DW1000::dev_id_ok() {
@@ -132,4 +130,55 @@ void DW1000::led_control(bool enable, uint8_t blinknow) {
 	tx_buffer[cmd_length + 3] = 0x20; // the default blink length
 
 	cmd_execute(4);
+}
+
+void DW1000::gpio_mode_led() {
+	cmd_reset();
+	cmd_set_write_bit();
+	cmd_set_byte0(0x26);
+	cmd_set_byte1(0x00);
+	tx_buffer[cmd_length + 0] = 0x00;
+	tx_buffer[cmd_length + 1] = 0x00;
+	tx_buffer[cmd_length + 2] = 0b00010101;
+	tx_buffer[cmd_length + 3] = 1<<6;
+
+	cmd_execute(4);
+}
+
+
+union Payload {
+	uint64_t value8;
+	uint32_t value4;
+	uint8_t bytes[8];
+};
+
+uint32_t DW1000::rx_get_payload4(uint8_t offset) {
+	Payload payload;
+	for(size_t i = 0; i<4; ++i) {
+		payload.bytes[i] = rx_buffer[i+offset];
+	}
+	return payload.value4;
+}
+
+uint64_t DW1000::rx_get_payload8(uint8_t offset) {
+	Payload payload;
+	for(size_t i = offset; i<8; ++i) {
+		payload.bytes[i] = rx_buffer[i+offset];
+	}
+	return payload.value8;
+}
+void DW1000::tx_set_payload4(uint32_t value) {
+	Payload payload;
+	payload.value4 = value;
+	for(size_t i = 0; i<4; ++i) {
+		tx_buffer[i + cmd_length] = payload.bytes[i];
+	}
+}
+
+void DW1000::tx_set_payload8(uint64_t value) {
+	Payload payload;
+	payload.value8 = value;
+	for(size_t i = 0; i<8; ++i) {
+		tx_buffer[i + cmd_length] = payload.bytes[i];
+	}
 }
