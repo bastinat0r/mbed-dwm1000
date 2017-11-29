@@ -1,0 +1,3 @@
+[submodule "libdw1000"]
+	path = libdw1000
+	url = git@github.com:bitcraze/libdw1000.git
