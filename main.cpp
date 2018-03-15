@@ -78,6 +78,20 @@ static dwOps_t ops = {
 dwDevice_t dwm_device;
 dwDevice_t* dwm = &dwm_device;
 
+void txcallback(dwDevice_t *dev){}
+void rxcallback(dwDevice_t *dev){}
+
+const char* txPacket = "foobar";
+
+void send_dummy(dwDevice_t* dev) {
+	dwNewTransmit(dev);
+	dwSetDefaults(dev);
+	dwSetData(dev, (uint8_t*)txPacket, 6);
+
+	dwStartTransmit(dev);
+
+}
+
 // main() runs in its own thread in the OS
 int main() {
 	heartbeat = 1;
@@ -92,7 +106,22 @@ int main() {
 	} else {
 	}
 
+	dwTime_t delay = {.full = 0};
+	dwSetAntenaDelay(dwm, delay);
+
+	dwAttachSentHandler(dwm, txcallback);
+	dwAttachReceivedHandler(dwm, rxcallback);
+
+	dwNewConfiguration(dwm);
+	dwSetDefaults(dwm);
+	dwEnableMode(dwm, MODE_SHORTDATA_FAST_ACCURACY);
+	dwSetChannel(dwm, CHANNEL_2);
+	dwSetPreambleCode(dwm, PREAMBLE_CODE_64MHZ_9);
+
+	dwCommitConfiguration(dwm);
+
     while (true) {
+		send_dummy(dwm);
 		heartbeat = !heartbeat;
 		wait(.5f);
     }
